@@ -1,17 +1,6 @@
 <?php
 
 /**
- * Implementation of hook_views_api().
- */
-function ybcivi_views_api() {
-  return array(
-    'api' => 2,
-    'path' => drupal_get_path('module', 'ybcivi'),
-    //'path' => drupal_get_path('module', 'ybcivi') . '/includes',
-  );
-}
-
-/**
  * Implementation of hook_civicrm_tabs()
  */
 function ybcivi_civicrm_tabs ( &$tabs, $contactID ) {
@@ -33,7 +22,7 @@ function ybcivi_civicrm_tabs ( &$tabs, $contactID ) {
 		$tabs[] = array('id' => 'siteStaff',
 										'url' => $url,
 										'title' => "Site Staff",
-										'weight' => 300);
+										'weight' => 2);
 	}
 }
 
@@ -104,7 +93,6 @@ function ybcivi_site_staff_page($contactId) {
 			}
 		}
 	}
-	dpm($roles);
 
 	return theme('page_site_staff_page', $roles);
 }
