@@ -33,6 +33,7 @@ function ybcivi_civicrm_tabs ( &$tabs, $contactID ) {
 function ybcivi_menu() {
 	$items = array();
 
+	//Add an entry for the site staff menu
 	$items['civicrm/sitestaff/%'] = array(
 		'title' => 'Site Staff',
 		'description' => 'staff for each site',
@@ -50,13 +51,12 @@ function ybcivi_site_staff_page($contactId) {
 	civicrm_initialize();
 	$config =& CRM_Core_Config::singleton( );
 	require_once "api/v2/Relationship.php";
-	require_once "api/v2/Contact.php";
 
-	//get the contact for this page
 	$params = array(
 		'contact_id'=>$contactId,
 	);
 
+	//get the 'Site Staff is' relationships to the given contact
 	$relationships = &civicrm_contact_relationship_get(
 		$params, 
 		array(),
@@ -65,35 +65,52 @@ function ybcivi_site_staff_page($contactId) {
 
 	$roles = array();
 
+	//Fetch the display labels for the site staff roles
+	//this is option group 83 in local database
+	//TODO: Find option list by name, not by id
 	$result = db_query('SELECT label, value FROM {civicrm_option_value} WHERE option_group_id = 83 ORDER BY weight');
 
+	//Initialize the role arrays with the label names
 	while ($opt = db_fetch_object($result)) {
 		$roles[$opt->value] = array(
 			'label' => $opt->label,
 			'contacts' => array(),
 		);
 	}
+	//Add a 'staff' role to the end of the array, for staff which do not
+	//have a special role
 	$roles['staff'] = array(
 		'label' => "Staff",
 		'contacts' => array(),
 	);
 
+	//Add site staff to roles array
 	foreach($relationships['result'] as $contact) {
+		//skip inactive or past date roles, these can still be seen on the
+		//relationships tab
 		if($contact['is_active'] == '1' && ($contact['end_date'] == NULL || $contact['end_date'] > date('Y-m-d')) ) {
 
+			//find the custom data set key
+			//TODO: get custom data set id from db using data set name
 			$k = preg_grep("/^custom_47_/", array_keys($contact), 0);
 
+			//TODO: fogure out whu array key for k is 26.  Probably match location?
 			if(count($contact[$k[26]]) > 0) {
+				//If there are values for the custom data field, add the contact
+				//to the appropriate roles in the roles array
 				foreach($contact[$k[26]] as $key => $value) {
 					if($value == 1)
 						$roles[$key]['contacts'][] = $contact;
 				}
 			} else {
+				//if the user has no custom data fields, then add them to the
+				//general 'staff' role.
 				$roles['staff']['contacts'][] = $contact;
 			}
 		}
 	}
 
+	//Theme the roles array using page_site_staff_page
 	return theme('page_site_staff_page', $roles);
 }
 
@@ -102,6 +119,7 @@ function ybcivi_site_staff_page($contactId) {
  */
 
 function ybcivi_theme() {
+	//register pag_site_Staff_page to the theme engine
 	return array(
 		'page_site_staff_page' => array(
 			'arguments' => array('roles' => null),
