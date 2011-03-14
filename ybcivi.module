@@ -1,0 +1,138 @@
+<?php
+
+/**
+ * Implementation of hook_views_api().
+ */
+function ybcivi_views_api() {
+  return array(
+    'api' => 2,
+    'path' => drupal_get_path('module', 'ybcivi'),
+    //'path' => drupal_get_path('module', 'ybcivi') . '/includes',
+  );
+}
+
+/**
+ * Implementation of hook_civicrm_tabs()
+ */
+function ybcivi_civicrm_tabs ( &$tabs, $contactID ) {
+
+	//initialize civicrm api
+	civicrm_initialize();
+	$config =& CRM_Core_Config::singleton( );
+	require_once "api/v2/Contact.php";
+
+	//get the contact for this page
+	$params = array(
+		'contact_id'=>$contactID,
+	);
+	$contacts = &civicrm_contact_get($params);
+
+	//if the contact is a Program add the site staff tab
+	if($contacts[$contactID]['contact_sub_type'] == 'Program') {
+		$url = CRM_Utils_System::url( 'civicrm/sitestaff/' . $contactID);
+		$tabs[] = array('id' => 'siteStaff',
+										'url' => $url,
+										'title' => "Site Staff",
+										'weight' => 300);
+	}
+}
+
+/**
+ * Implementation of hook_menu()
+ */
+
+function ybcivi_menu() {
+	$items = array();
+
+	$items['civicrm/sitestaff/%'] = array(
+		'title' => 'Site Staff',
+		'description' => 'staff for each site',
+		'page callback' => 'ybcivi_site_staff_page',
+		'page arguments' => array(2),
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+	);
+
+	return $items;
+}
+
+function ybcivi_site_staff_page($contactId) {
+	//initialize civicrm api
+	civicrm_initialize();
+	$config =& CRM_Core_Config::singleton( );
+	require_once "api/v2/Relationship.php";
+	require_once "api/v2/Contact.php";
+
+	//get the contact for this page
+	$params = array(
+		'contact_id'=>$contactId,
+	);
+
+	$relationships = &civicrm_contact_relationship_get(
+		$params, 
+		array(),
+		array('Site Staff is')
+	);
+
+	$roles = array();
+
+	$result = db_query('SELECT label, value FROM {civicrm_option_value} WHERE option_group_id = 83 ORDER BY weight');
+
+	while ($opt = db_fetch_object($result)) {
+		$roles[$opt->value] = array(
+			'label' => $opt->label,
+			'contacts' => array(),
+		);
+	}
+	$roles['staff'] = array(
+		'label' => "Staff",
+		'contacts' => array(),
+	);
+
+	foreach($relationships['result'] as $contact) {
+		if($contact['is_active'] == '1' && ($contact['end_date'] == NULL || $contact['end_date'] > date('Y-m-d')) ) {
+
+			$k = preg_grep("/^custom_47_/", array_keys($contact), 0);
+
+			if(count($contact[$k[26]]) > 0) {
+				foreach($contact[$k[26]] as $key => $value) {
+					if($value == 1)
+						$roles[$key]['contacts'][] = $contact;
+				}
+			} else {
+				$roles['staff']['contacts'][] = $contact;
+			}
+		}
+	}
+	dpm($roles);
+
+	return theme('page_site_staff_page', $roles);
+}
+
+/**
+ * Implementation of hook_theme()
+ */
+
+function ybcivi_theme() {
+	return array(
+		'page_site_staff_page' => array(
+			'arguments' => array('roles' => null),
+			'template' => 'page-site-staff-page',
+			'path' => drupal_get_path('module', 'ybcivi'),
+		),
+	);
+}
+
+/**
+ * Implementation of hook_views_query_alter()
+ */
+
+function ybcivi_views_query_alter ( &$view, &$query) {
+	if($view->name == 'site_staff') {
+		$view->query->add_where('adv_filter',
+			"(civicrm_relationship.end_date IS NULL OR civicrm_relationship.end_date >= NOW())");
+		$view->query->set_group_operator("AND");
+	}
+}
+
+

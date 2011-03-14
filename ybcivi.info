@@ -1,0 +1,7 @@
+name = "YBUSA CiviCRM Tweaks"
+description = "A number of tweaks to CiviCRM to do YB stuff"
+core = 6.x
+php = 5.2
+package = YouthBuild
+dependencies[] = views
+dependencies[] = civicrm
