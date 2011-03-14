@@ -93,12 +93,15 @@ function ybcivi_site_staff_page($contactId) {
 			//find the custom data set key
 			//TODO: get custom data set id from db using data set name
 			$k = preg_grep("/^custom_47_/", array_keys($contact), 0);
+			//preg_grep returns matchIndex -> array value.  In this case I just
+			//want the value, so i reset the array (which sets the array pointer
+			//to the first element of the array)
+			$k = reset($k);
 
-			//TODO: fogure out whu array key for k is 26.  Probably match location?
-			if(count($contact[$k[26]]) > 0) {
+			if(count($contact[$k]) > 0) {
 				//If there are values for the custom data field, add the contact
 				//to the appropriate roles in the roles array
-				foreach($contact[$k[26]] as $key => $value) {
+				foreach($contact[$k] as $key => $value) {
 					if($value == 1)
 						$roles[$key]['contacts'][] = $contact;
 				}
