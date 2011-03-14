@@ -63,14 +63,18 @@ function ybcivi_site_staff_page($contactId) {
 		array('Site Staff is')
 	);
 
-	$roles = array();
+	//Find the custom field Id
+	$result = db_query("SELECT id, option_group_id FROM {civicrm_custom_field} WHERE name = '%s'", 'Relationship_Roles');
+	$row = db_fetch_object($result);
+	$custom = $row->id;
+	$option_group_id = $row->option_group_id;
 
 	//Fetch the display labels for the site staff roles
 	//this is option group 83 in local database
-	//TODO: Find option list by name, not by id
-	$result = db_query('SELECT label, value FROM {civicrm_option_value} WHERE option_group_id = 83 ORDER BY weight');
+	$result = db_query('SELECT label, value FROM {civicrm_option_value} WHERE option_group_id = %d ORDER BY weight', $option_group_id);
 
 	//Initialize the role arrays with the label names
+	$roles = array();
 	while ($opt = db_fetch_object($result)) {
 		$roles[$opt->value] = array(
 			'label' => $opt->label,
@@ -91,8 +95,7 @@ function ybcivi_site_staff_page($contactId) {
 		if($contact['is_active'] == '1' && ($contact['end_date'] == NULL || $contact['end_date'] > date('Y-m-d')) ) {
 
 			//find the custom data set key
-			//TODO: get custom data set id from db using data set name
-			$k = preg_grep("/^custom_47_/", array_keys($contact), 0);
+			$k = preg_grep("/^custom_" . $custom . "_/", array_keys($contact), 0);
 			//preg_grep returns matchIndex -> array value.  In this case I just
 			//want the value, so i reset the array (which sets the array pointer
 			//to the first element of the array)
