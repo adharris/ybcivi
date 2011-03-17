@@ -1,6 +1,110 @@
 <?php
 
 /**
+ * Implementation of hoox_install
+ **/
+
+function ybcivi_install () {
+
+	civicrm_initialize();
+	$config =& CRM_Core_Config::singleton( );
+	require_once "api/v2/RelationshipType.php";
+	require_once "api/v2/CustomGroup.php";
+
+	$site_contact_type_name = "Program";
+	$site_staff_relationship_name = "Staff of";
+	$site_staff_relationship_name_b = "Site Staff is";
+	$custom_group_title = "Relationship Details";
+	$custom_group_name = "Relationship_Details";
+	$custom_field_name = "Relationship_Roles";
+	$custom_field_label = "Relationship Roles";
+	
+	//find the site staff relationship
+	$params = array(
+		'contact_type_a' => 'Individual',
+		'contact_type_b' => 'Organization',
+		'contact_sub_type_b' => $site_contact_type_name,
+		'name_a_b' => $site_staff_relationship_name,
+	);
+	$results = & civicrm_relationship_types_get($params);
+	if(count($results) == 1) {
+		//The relationship type exists, so we can use its id
+		$site_staff_rel_id = $results[0]['id'];
+	} elseif(count($results) == 0) {
+		//The site staff relationshipt doesnt exist, so lets create it
+		$relTypeParams = array(
+			'name_a_b' => $site_staff_relationship_name,
+			'name_b_a' => $site_staff_relationship_name_b,
+			'contact_type_a' => 'Individual',
+			'contact_type_b' => 'Organization',
+			'contact_sub_type_b' => 'Program',
+			'is_reserved' => 0,
+			'is_active' => 1,
+		);
+		$result =  & civicrm_relationship_type_add( $relTypeParams );
+	} else {
+		//this should probably never happen, but should be handledRelationship_DetailsRelationship_Details
+		//TODO: Handle error if multiple site staff relationships exist
+	}
+
+	//Find a custom fieldset on relationships called relationship_details
+	$results = db_query("SELECT id FROM {civicrm_custom_group} " .
+	                    "WHERE name = '%s' " .
+											"AND extends = 'Relationship' " .
+											"AND extends_entity_column_value LIKE '%s'",
+										 	$custom_group_name, "%" . $site_staff_rel_id . "%");
+	$data = db_fetch_object($results);
+	if($data) {
+		//If the custom field group exists, we can use it's id
+		$custom_group_id = $data->id;
+	} else {
+		//Otherwise we need to create the custom field group
+		$group_params = array (
+			'title' => $custom_group_title,
+			'name' => $custom_group_name,
+			'extends' => array('Relationship', array($site_staff_rel_id)),
+			'weight' => 10,
+			'collapse_display' => 0,
+			'style' => 'Inline',
+			'is_active' => 1,
+		);
+		$customGroup =& civicrm_custom_group_create($group_params);
+		$custom_group_id =  $customGroup['id'];
+	}
+
+	//Find a custom field in the option group for the relationship roles
+	$results = db_query("SELECT * FROM {civicrm_custom_field} " .
+	                    "WHERE custom_group_id = %d " .
+										  "AND name = '%s'",
+										  $custom_group_id,
+										  $custom_field_name);
+	$data = db_fetch_object($results);
+	if($data) {
+		//We have a custom fieldset already, and we are done
+	} else {
+		//create a custom fieldset
+		$custom_field_params = array(
+			'custom_group_id' => $custom_group_id,
+			'name' => $custom_field_name,
+			'label' => $custom_field_label,
+			'html_type' => 'CheckBox',
+			'data_type' => 'String',
+			'weight' => 2,
+			'is_required' => 0,
+			'is_searchable' => 1,
+			'is_active' => 1,
+			'option_label' => array('Director', 'Main Data Contact', 'PSE Coordinator'),
+			'option_value' => array('director', 'main_data_contact', 'pse_coordinator'),
+			'option_weight'=> array(10, 20, 30),
+			'option_status' => array(1,1,1),
+		);
+
+		$custom_field = & civicrm_custom_field_create($custom_field_params);
+	}
+	
+}
+
+/**
  * Implementation of hook_civicrm_tabs()
  */
 function ybcivi_civicrm_tabs ( &$tabs, $contactID ) {
