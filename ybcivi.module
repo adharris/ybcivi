@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Implementation of hoox_install
+ * Implementation of hook_install
  **/
 
 function ybcivi_install () {
@@ -93,6 +93,7 @@ function ybcivi_install () {
 			'is_required' => 0,
 			'is_searchable' => 1,
 			'is_active' => 1,
+			'options_per_line' => 1,
 			'option_label' => array('Director', 'Main Data Contact', 'PSE Coordinator'),
 			'option_value' => array('director', 'main_data_contact', 'pse_coordinator'),
 			'option_weight'=> array(10, 20, 30),
@@ -143,6 +144,7 @@ function ybcivi_menu() {
 		'description' => 'staff for each site',
 		'page callback' => 'ybcivi_site_staff_page',
 		'page arguments' => array(2),
+		//TODO:Find the real permission
 		'access arguments' => array('access content'),
 		'type' => MENU_CALLBACK,
 	);
@@ -174,7 +176,6 @@ function ybcivi_site_staff_page($contactId) {
 	$option_group_id = $row->option_group_id;
 
 	//Fetch the display labels for the site staff roles
-	//this is option group 83 in local database
 	$result = db_query('SELECT label, value FROM {civicrm_option_value} WHERE option_group_id = %d ORDER BY weight', $option_group_id);
 
 	//Initialize the role arrays with the label names
@@ -250,5 +251,78 @@ function ybcivi_views_query_alter ( &$view, &$query) {
 		$view->query->set_group_operator("AND");
 	}
 }
+
+/**
+ * Implementation of hook_civicrm_postProcess()
+ */
+
+//function ybcivi_civicrm_postProcess($formName, &$form) {
+//	dpm($form, "Form");
+//	dpm($formName, "Form Name");
+//	if($formName == "CRM_Contact_Form_Contact") {
+//		dpm($form->_contactType, "Contact Type");
+//		if($form->_contactType == "Individual") {
+//			//initialize civicrm api
+//			civicrm_initialize();
+//			$config =& CRM_Core_Config::singleton( );
+//			require_once "api/v2/Relationship.php";
+//			require_once "api/v2/Contact.php";
+//
+//			$employer_id = $form->_submitValues['current_employer_id'];
+//			dpm($employer_id, "Employer Id");
+//			$contact_id = $form->_contactId;
+//
+//			//Find the current employer
+//			$emp_params = array(
+//				'contact_id'=> $employer_id,
+//			);
+//			$contacts = &civicrm_contact_get($emp_params);
+//			dpm($contacts, "Employer");
+//
+//			//if the contact is a Program add the site staff tab
+//			if($contacts[$employer_id]['contact_sub_type'] == 'Program') {
+//				//Find a relationship between the user and the program
+//
+//				$contact_params = array(
+//					'contact_id' => $contact_id,
+//				);
+//
+//				$relationships = & civicrm_contact_relationship_get(
+//					$contact_params,
+//					$emp_params,
+//					array("Site Staff of")
+//				);
+//
+//				dpm($relationships, "Found Relationships");
+//
+//				//check that there is a site staff relationship
+//				if($relationships['is_error'] == 0 && count($relationships['result']) > 0) {
+//
+//				} else {
+//					//create a new relationship
+//
+//					//get the site staff relationship id
+//					$results = db_query("SELECT id from {civicrm_relationship_type} " .
+//						"WHERE name_a_b = '%s' ", 'Staff of');
+//
+//					$data = db_fetch_object($results);
+//					$rel_id = $data->id;
+//
+//					$new_rel_params = array(
+//						'contact_id_a' => $contact_id,
+//						'contact_id_b' => $employer_id,
+//						'relationship_type_id' => $rel_id,
+//						'start_date' => date('Y-m-d'), 
+//						'is_active' => 1,
+//					);
+//					$new_rel = & civicrm_relationship_create( $new_rel_params );
+//
+//					dpm($new_rel, "Created Relationship");
+//
+//				}
+//			}
+//		}
+//	}
+//}
 
 
